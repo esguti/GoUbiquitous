@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package com.portfolio.course.esguti.goubiquitous;
+package com.portfolio.course.esguti.goubiquitous.wear;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -35,6 +37,7 @@ import android.text.format.Time;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
+import com.portfolio.course.esguti.goubiquitous.WeatherWatchFaceConstants;
 import com.portfolio.course.esguti.goubiquitous.wear.R;
 
 import java.lang.ref.WeakReference;
@@ -87,6 +90,11 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
         float mXOffset;
         float mYOffset;
 
+        private Paint  m_TempPaint;
+        private Bitmap m_WeatherIcon;
+        private String m_TempHigh = "?";
+        private String m_TempLow = "?";
+        private String m_WeatherCond = WeatherWatchFaceConstants.KEY_WEATHER_NA;
         /**
          * Whether the display supports fewer bits for each color in ambient mode. When true, we
          * disable anti-aliasing in ambient mode.
@@ -113,6 +121,19 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
 
             mTime = new Time();
+
+
+            // Temp paints
+            m_TempPaint = new Paint();
+            m_TempPaint.setARGB(255, 255, 255, 255);
+            m_TempPaint.setStrokeWidth(15.0f);
+            m_TempPaint.setAntiAlias(true);
+            m_TempPaint.setTextSize(35f);
+            m_TempPaint.setStrokeCap(Paint.Cap.SQUARE);
+            m_TempPaint.setTextAlign(Paint.Align.RIGHT);
+
+            m_WeatherIcon = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_clear);
+
         }
 
         @Override
@@ -234,6 +255,11 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onDraw(Canvas canvas, Rect bounds) {
+
+
+            final float center_x = (float) canvas.getWidth() / (float) 1.6;
+            final int canvas_height = canvas.getHeight();
+
             // Draw the background.
             if (isInAmbientMode()) {
                 canvas.drawColor(Color.BLACK);
@@ -247,6 +273,19 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
                     ? String.format("%d:%02d", mTime.hour, mTime.minute)
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+
+
+            //Draw weather
+            float temp_y = canvas_height * 0.75f;
+            float temp_y_high = canvas_height * 0.60f;
+            float temp_y_low = canvas_height * 0.75f;
+            float spaceLength = m_TempPaint.measureText(" ");
+            String textLow  = "Low: "  + m_TempLow   + "° ";
+            String textHigh = "High: " + m_TempHigh  + "° ";
+
+            canvas.drawBitmap(m_WeatherIcon, center_x + spaceLength, temp_y - m_WeatherIcon.getHeight(), m_TempPaint);
+            canvas.drawText(textHigh, center_x, temp_y_high, m_TempPaint);
+            canvas.drawText(textLow , center_x, temp_y_low, m_TempPaint);
         }
 
         /**

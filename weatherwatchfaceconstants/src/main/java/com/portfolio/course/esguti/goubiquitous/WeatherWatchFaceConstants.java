@@ -1,6 +1,7 @@
 package com.portfolio.course.esguti.goubiquitous;
 
 public class WeatherWatchFaceConstants {
+    public static final String KEY_WEATHER_NA = "N/A";
     public static final String KEY_WEATHER_CLEAR = "CLEAR";
     public static final String KEY_WEATHER_CLOUDY = "CLOUDY";
     public static final String KEY_WEATHER_FOG = "FOG";
