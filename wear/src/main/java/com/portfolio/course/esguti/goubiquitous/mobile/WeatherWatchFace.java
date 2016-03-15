@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.portfolio.course.esguti.goubiquitous.wear;
+package com.portfolio.course.esguti.goubiquitous.mobile;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -31,14 +31,18 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.Wearable;
+import com.portfolio.course.esguti.goubiquitous.WeatherWatchConstants;
 import com.portfolio.course.esguti.goubiquitous.WeatherWatchFaceConstants;
-import com.portfolio.course.esguti.goubiquitous.wear.R;
 
 import java.lang.ref.WeakReference;
 import java.util.TimeZone;
@@ -68,7 +72,13 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
         return new Engine();
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+
+
+    private class Engine extends CanvasWatchFaceService.Engine
+            implements GoogleApiClient.ConnectionCallbacks  {
+
+        private final String LOG_TAG = Engine.class.getSimpleName();
+
         final Handler mUpdateTimeHandler = new EngineHandler(this);
 
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -90,16 +100,69 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
         float mXOffset;
         float mYOffset;
 
+        private GoogleApiClient m_apiClient;
         private Paint  m_TempPaint;
         private Bitmap m_WeatherIcon;
         private String m_TempHigh = "?";
         private String m_TempLow = "?";
         private String m_WeatherCond = WeatherWatchFaceConstants.KEY_WEATHER_NA;
+
+
         /**
          * Whether the display supports fewer bits for each color in ambient mode. When true, we
          * disable anti-aliasing in ambient mode.
          */
         boolean mLowBitAmbient;
+
+
+        public class MessageReceiver extends BroadcastReceiver{
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String path = intent.getStringExtra(getString(R.string.message_path));
+                String message = intent.getStringExtra(getString(R.string.message_data));
+
+                Log.d(LOG_TAG, "Intent Received." + " P:" + path + " M:" + message);
+
+                if (path.equals(WeatherWatchConstants.MSG_HIGH_TEMP)) {
+                    m_TempHigh = message;
+                } else {
+                    if (path.equals(WeatherWatchConstants.MSG_LOW_TEMP)) {
+                        m_TempLow = message;
+                    } else {
+                        if (path.equals(WeatherWatchConstants.MSG_COND_WEATHER)) {
+                            m_WeatherCond = message;
+                        }else{
+                            Log.w(LOG_TAG, "Message not recognized");
+                        }
+                    }
+                }
+            }
+        };
+
+        @Override
+        public void onConnected(Bundle bundle) {
+            Log.d(LOG_TAG, "Connected Device");
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+            Log.d(LOG_TAG, "Connection Suspended");
+        }
+
+        private void initGoogleApiClient(Context context) {
+            m_apiClient = new GoogleApiClient.Builder(context)
+                    .addApi(Wearable.API)
+                    .addConnectionCallbacks(this)
+                    .build();
+
+            if( m_apiClient != null && !( m_apiClient.isConnected() || m_apiClient.isConnecting() ) ) {
+                Log.d(LOG_TAG, "Connected to API");
+                m_apiClient.connect();
+            }else{
+                Log.e(LOG_TAG, "Problems connection to API");
+            }
+        }
+
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -122,8 +185,12 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
 
             mTime = new Time();
 
+            MessageReceiver messageReceiver = new MessageReceiver();
+            IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
+            LocalBroadcastManager.getInstance(getApplicationContext()).registerReceiver(messageReceiver, messageFilter);
 
-            // Temp paints
+            initGoogleApiClient(getApplicationContext());
+
             m_TempPaint = new Paint();
             m_TempPaint.setARGB(255, 255, 255, 255);
             m_TempPaint.setStrokeWidth(15.0f);
@@ -133,6 +200,8 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
             m_TempPaint.setTextAlign(Paint.Align.RIGHT);
 
             m_WeatherIcon = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_clear);
+
+            Log.d(LOG_TAG, "Created App");
 
         }
 
@@ -283,7 +352,10 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
             String textLow  = "Low: "  + m_TempLow   + "° ";
             String textHigh = "High: " + m_TempHigh  + "° ";
 
-            canvas.drawBitmap(m_WeatherIcon, center_x + spaceLength, temp_y - m_WeatherIcon.getHeight(), m_TempPaint);
+            if( m_WeatherCond != WeatherWatchFaceConstants.KEY_WEATHER_NA ) {
+                m_WeatherIcon = BitmapFactory.decodeResource(getResources(), getWearableIconResource(m_WeatherCond));
+                canvas.drawBitmap(m_WeatherIcon, center_x + spaceLength, temp_y - m_WeatherIcon.getHeight(), m_TempPaint);
+            }
             canvas.drawText(textHigh, center_x, temp_y_high, m_TempPaint);
             canvas.drawText(textLow , center_x, temp_y_low, m_TempPaint);
         }
@@ -319,6 +391,24 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
         }
+
+        private int getWearableIconResource(String weatherId) {
+
+            // Based on weather code data found at:
+            // http://bugs.openweathermap.org/projects/api/wiki/Weather_Condition_Codes
+            if ( WeatherWatchFaceConstants.KEY_WEATHER_STORM.equals(weatherId) ){ return R.mipmap.ic_storm;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_LIGHT_RAIN.equals(weatherId) ){ return R.mipmap.ic_light_rain;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_RAIN.equals(weatherId) ){ return R.mipmap.ic_rain;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_SNOW.equals(weatherId) ){ return R.mipmap.ic_snow;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_FOG.equals(weatherId) ){ return R.mipmap.ic_fog;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_CLEAR.equals(weatherId) ){ return R.mipmap.ic_clear;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_LIGHT_CLOUDS.equals(weatherId) ){ return R.mipmap.ic_light_clouds;
+            } else if ( WeatherWatchFaceConstants.KEY_WEATHER_CLOUDY.equals(weatherId) ){ return R.mipmap.ic_cloudy;
+            }else {
+                return R.mipmap.ic_launcher;
+            }
+        }
+
     }
 
     private static class EngineHandler extends Handler {

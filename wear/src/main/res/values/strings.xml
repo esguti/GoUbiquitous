@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">WearWeather</string>
-    <string name="my_digital_name">My Personal WF</string>
+    <string name="my_digital_name">My Personal We4</string>
+    <string name="message_path">MSG_PATH</string>
+    <string name="message_data">MSG_DATA</string>
 </resources>

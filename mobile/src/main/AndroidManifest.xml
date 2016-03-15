@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
      Copyright (C) 2015 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
      limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.portfolio.course.esguti.goubiquitous.mobile" >
+    package="com.portfolio.course.esguti.goubiquitous.mobile">
 
     <!-- This permission is necessary in order for Sunshine to perform network access. -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -24,6 +23,7 @@
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
+    <uses-permission android:name="android.permission.READ_SYNC_STATS" />
 
     <!-- Permissions required to make our UI more friendly -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -36,7 +36,7 @@
         android:name="com.portfolio.course.esguti.goubiquitous.mobile.permission.C2D_MESSAGE"
         android:protectionLevel="signature" />
 
-    <uses-permission android:name="com.portfolio.course.esguti.goubiquitous.permission.C2D_MESSAGE" />
+    <uses-permission android:name="com.portfolio.course.esguti.goubiquitous.mobile.permission.C2D_MESSAGE" />
 
     <!-- Required to act as a custom watch face. -->
     <uses-permission android:name="com.google.android.permission.PROVIDE_BACKGROUND" />
@@ -46,11 +46,11 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme" >
+        android:theme="@style/AppTheme">
         <activity
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.MainActivity"
+            android:name=".MainActivity"
             android:label="@string/app_name"
-            android:theme="@style/AppTheme.Main" >
+            android:theme="@style/AppTheme.Main">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -58,32 +58,32 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.DetailActivity"
+            android:name=".DetailActivity"
             android:label="@string/title_activity_detail"
-            android:parentActivityName="com.portfolio.course.esguti.goubiquitous.mobile.MainActivity"
-            android:theme="@style/AppTheme.Details" >
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/AppTheme.Details">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.portfolio.course.esguti.goubiquitous.mobile.MainActivity" />
         </activity>
         <activity
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.SettingsActivity"
+            android:name=".SettingsActivity"
             android:label="@string/title_activity_settings"
-            android:parentActivityName="com.portfolio.course.esguti.goubiquitous.mobile.MainActivity"
-            android:theme="@style/SettingsTheme" >
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/SettingsTheme">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.portfolio.course.esguti.goubiquitous.mobile.MainActivity" />
         </activity>
 
         <provider
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.data.WeatherProvider"
+            android:name=".data.WeatherProvider"
             android:authorities="@string/content_authority"
             android:exported="false"
             android:syncable="true" />
 
         <!-- SyncAdapter's dummy authentication service -->
-        <service android:name="com.portfolio.course.esguti.goubiquitous.mobile.sync.SunshineAuthenticatorService" >
+        <service android:name=".sync.SunshineAuthenticatorService">
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
             </intent-filter>
@@ -95,8 +95,8 @@
 
         <!-- The SyncAdapter service -->
         <service
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.sync.SunshineSyncService"
-            android:exported="true" >
+            android:name=".sync.SunshineSyncService"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.SyncAdapter" />
             </intent-filter>
@@ -110,7 +110,7 @@
         <receiver
             android:name="com.google.android.gms.gcm.GcmReceiver"
             android:exported="true"
-            android:permission="com.google.android.c2dm.permission.SEND" >
+            android:permission="com.google.android.c2dm.permission.SEND">
             <intent-filter>
                 <action android:name="com.google.android.c2dm.intent.RECEIVE" />
                 <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
@@ -120,10 +120,10 @@
         </receiver>
         <!-- Muzei Extension -->
         <service
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.muzei.WeatherMuzeiSource"
+            android:name=".muzei.WeatherMuzeiSource"
             android:description="@string/muzei_description"
             android:icon="@drawable/ic_muzei"
-            android:label="@string/app_name" >
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="com.google.android.apps.muzei.api.MuzeiArtSource" />
             </intent-filter>
@@ -134,8 +134,8 @@
         </service>
         <!-- Today Widget -->
         <receiver
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.widget.TodayWidgetProvider"
-            android:label="@string/title_widget_today" >
+            android:name=".widget.TodayWidgetProvider"
+            android:label="@string/title_widget_today">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.portfolio.course.esguti.goubiquitous.mobile.ACTION_DATA_UPDATED" />
@@ -146,12 +146,12 @@
                 android:resource="@xml/widget_info_today" />
         </receiver>
 
-        <service android:name="com.portfolio.course.esguti.goubiquitous.mobile.widget.TodayWidgetIntentService" />
+        <service android:name=".widget.TodayWidgetIntentService" />
         <!-- Detail Widget -->
         <receiver
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.widget.DetailWidgetProvider"
+            android:name=".widget.DetailWidgetProvider"
             android:enabled="@bool/widget_detail_enabled"
-            android:label="@string/title_widget_detail" >
+            android:label="@string/title_widget_detail">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.portfolio.course.esguti.goubiquitous.mobile.ACTION_DATA_UPDATED" />
@@ -163,28 +163,31 @@
         </receiver>
 
         <service
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.widget.DetailWidgetRemoteViewsService"
+            android:name=".widget.DetailWidgetRemoteViewsService"
             android:enabled="@bool/widget_detail_enabled"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
         <service
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.gcm.MyGcmListenerService"
-            android:exported="false" >
+            android:name=".gcm.MyGcmListenerService"
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.google.android.c2dm.intent.RECEIVE" />
             </intent-filter>
         </service>
         <service
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.gcm.MyInstanceIDListenerService"
-            android:exported="false" >
+            android:name=".gcm.MyInstanceIDListenerService"
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.google.android.gms.iid.InstanceID" />
             </intent-filter>
         </service>
         <service
-            android:name="com.portfolio.course.esguti.goubiquitous.mobile.gcm.RegistrationIntentService"
-            android:exported="false" >
-        </service>
+            android:name=".gcm.RegistrationIntentService"
+            android:exported="false"></service>
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
     </application>
 
 </manifest>

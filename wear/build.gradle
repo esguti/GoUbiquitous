@@ -6,7 +6,7 @@ android {
     buildToolsVersion "23.0.2"
 
     defaultConfig {
-        applicationId "com.com.portfolio.course.esguti.goubiquitous.wear"
+        applicationId "com.portfolio.course.esguti.goubiquitous.mobile"
         minSdkVersion 21
         targetSdkVersion 23
         versionCode 1
@@ -26,4 +26,5 @@ dependencies {
     compile 'com.google.android.gms:play-services-wearable:8.4.0'
 
     compile project(':weatherwatchfaceconstants')
+    compile 'com.android.support:support-v4:23.2.0'
 }

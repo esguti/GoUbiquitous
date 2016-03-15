@@ -22,6 +22,7 @@ import android.net.NetworkInfo;
 import android.preference.PreferenceManager;
 import android.text.format.Time;
 
+import com.portfolio.course.esguti.goubiquitous.WeatherWatchFaceConstants;
 import com.portfolio.course.esguti.goubiquitous.mobile.sync.SunshineSyncAdapter;
 
 import java.text.DateFormat;

@@ -30,6 +30,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.portfolio.course.esguti.goubiquitous.mobile.data.WeatherContract;
 import com.portfolio.course.esguti.goubiquitous.mobile.gcm.RegistrationIntentService;
 import com.portfolio.course.esguti.goubiquitous.mobile.sync.SunshineSyncAdapter;
@@ -107,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
                 startService(intent);
             }
         }
+
     }
 
     @Override

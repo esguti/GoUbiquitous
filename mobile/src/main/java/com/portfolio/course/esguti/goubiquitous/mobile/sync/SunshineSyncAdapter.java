@@ -30,7 +30,12 @@ import android.text.format.Time;
 import android.util.Log;
 
 import com.bumptech.glide.Glide;
-import com.portfolio.course.esguti.goubiquitous.mobile.BuildConfig;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.Wearable;
+import com.portfolio.course.esguti.goubiquitous.WeatherWatchConstants;
 import com.portfolio.course.esguti.goubiquitous.mobile.MainActivity;
 import com.portfolio.course.esguti.goubiquitous.mobile.R;
 import com.portfolio.course.esguti.goubiquitous.mobile.Utility;
@@ -52,7 +57,9 @@ import java.net.URL;
 import java.util.Vector;
 import java.util.concurrent.ExecutionException;
 
-public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
+import static com.portfolio.course.esguti.goubiquitous.WeatherWatchFaceConstants.getWearableIconResourceForWeatherCondition;
+
+public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter{
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
     public static final String ACTION_DATA_UPDATED =
             "com.portfolio.course.esguti.goubiquitous.mobile.ACTION_DATA_UPDATED";
@@ -62,7 +69,6 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public static final int SYNC_FLEXTIME = SYNC_INTERVAL/3;
     private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
     private static final int WEATHER_NOTIFICATION_ID = 3004;
-
 
     private static final String[] NOTIFY_WEATHER_PROJECTION = new String[] {
             WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,
@@ -87,8 +93,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public static final int LOCATION_STATUS_UNKNOWN = 3;
     public static final int LOCATION_STATUS_INVALID = 4;
 
-    public SunshineSyncAdapter(Context context, boolean autoInitialize) {
+    //for connecting to Wearable
+    private GoogleApiClient m_apiClient;
+
+    public SunshineSyncAdapter(Context context, boolean autoInitialize, GoogleApiClient apiClient) {
         super(context, autoInitialize);
+        m_apiClient = apiClient;
     }
 
     @Override
@@ -386,25 +396,28 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         boolean displayNotifications = prefs.getBoolean(displayNotificationsKey,
                 Boolean.parseBoolean(context.getString(R.string.pref_enable_notifications_default)));
 
-        if ( displayNotifications ) {
+        String lastNotificationKey = context.getString(R.string.pref_last_notification);
+        long lastSync = prefs.getLong(lastNotificationKey, 0);
 
-            String lastNotificationKey = context.getString(R.string.pref_last_notification);
-            long lastSync = prefs.getLong(lastNotificationKey, 0);
+        //if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
+            // Last sync was more than 1 day ago, let's send a notification with the weather.
+            String locationQuery = Utility.getPreferredLocation(context);
 
-            if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
-                // Last sync was more than 1 day ago, let's send a notification with the weather.
-                String locationQuery = Utility.getPreferredLocation(context);
+            Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
 
-                Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
+            // we'll query our contentProvider, as always
+            Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
 
-                // we'll query our contentProvider, as always
-                Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+            if (cursor.moveToFirst()) {
+                int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+                double high = cursor.getDouble(INDEX_MAX_TEMP);
+                double low = cursor.getDouble(INDEX_MIN_TEMP);
+                String desc = cursor.getString(INDEX_SHORT_DESC);
 
-                if (cursor.moveToFirst()) {
-                    int weatherId = cursor.getInt(INDEX_WEATHER_ID);
-                    double high = cursor.getDouble(INDEX_MAX_TEMP);
-                    double low = cursor.getDouble(INDEX_MIN_TEMP);
-                    String desc = cursor.getString(INDEX_SHORT_DESC);
+                //update the wearable if exists
+                sendWeatherInfo(high, low, weatherId);
+
+                if ( displayNotifications ) {
 
                     int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
                     Resources resources = context.getResources();
@@ -480,9 +493,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                     editor.putLong(lastNotificationKey, System.currentTimeMillis());
                     editor.commit();
                 }
-                cursor.close();
             }
-        }
+            cursor.close();
+        //}
     }
 
     /**
@@ -638,4 +651,38 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         spe.putInt(c.getString(R.string.pref_location_status_key), locationStatus);
         spe.commit();
     }
+
+    private void sendWeatherInfo( Double tmp_high, Double tmp_low, int weather_cond ){
+
+        Log.d(LOG_TAG, "Sending message to wearable");
+
+        final String tmp_high_string, tmp_low_string, weather_cond_string;
+        tmp_high_string = String.valueOf(Math.round(tmp_high));
+        tmp_low_string = String.valueOf(Math.round(tmp_low));
+        weather_cond_string = getWearableIconResourceForWeatherCondition(weather_cond);
+
+        new Thread( new Runnable() {
+            @Override
+            public void run() {
+                NodeApi.GetConnectedNodesResult nodes = Wearable.NodeApi.getConnectedNodes( m_apiClient ).await();
+                for(Node node : nodes.getNodes()) {
+                    MessageApi.SendMessageResult result_ht = Wearable.MessageApi.sendMessage(
+                            m_apiClient, node.getId(), WeatherWatchConstants.MSG_HIGH_TEMP, tmp_high_string.getBytes() )
+                            .await();
+                    Log.d(LOG_TAG, "high temp message sent");
+                    MessageApi.SendMessageResult result_lt = Wearable.MessageApi.sendMessage(
+                            m_apiClient, node.getId(), WeatherWatchConstants.MSG_LOW_TEMP, tmp_low_string.getBytes() )
+                            .await();
+                    Log.d(LOG_TAG, "low temp message sent");
+                    MessageApi.SendMessageResult result_cw = Wearable.MessageApi.sendMessage(
+                            m_apiClient, node.getId(), WeatherWatchConstants.MSG_COND_WEATHER, weather_cond_string.getBytes() )
+                            .await();
+                    Log.d(LOG_TAG, "weather cond message sent");
+                }
+
+            }
+        }).start();
+    }
+
+
 }
